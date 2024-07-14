@@ -6,12 +6,16 @@
 
 .video-container video {
   position: absolute;
+  top: 180px;
+  left: 150px;
   /* top: 170px; Adjust as needed */
 }
 
 .cropper {
   /* top: 180px; Adjust positioning relative to video */
   position: absolute;
+  top: 190px;
+  left: 150px;;
   cursor: ew-resize;
   z-index: 1; /* Ensure cropper stays above video */
 }
@@ -70,9 +74,7 @@
 
 .cropped-preview {
   position: absolute;
-  width: 20%; /* Adjust width of preview */
-  height: auto; /* Ensure height adjusts proportionally */
-  bottom: 10px; /* Adjust positioning as needed */
-  right: 10px; /* Adjust positioning as needed */
+  right: 0;
+  bottom: 0;
   border: 1px dashed red; /* Example border for visualization */
 }

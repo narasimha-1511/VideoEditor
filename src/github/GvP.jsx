@@ -16,15 +16,15 @@ const VideoCropper = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [initialMouseX, setInitialMouseX] = useState(0);
   const [initialCropperLeft, setInitialCropperLeft] = useState(0);
-  const [aspectRatio, setAspectRatio] = useState('3:4');
+  const [aspectRatio, setAspectRatio] = useState("3:4");
   const [cropperWidth, setCropperWidth] = useState(0);
   const [showCropper, setShowCropper] = useState(false);
   const [croppedRegion, setCroppedRegion] = useState(null); // State to store cropped region data
   const [cropperLeft, setCropperLeft] = useState(0); // Adjust default cropperLeft to 0
 
-  const HandleCropperLeft = () => {
-    setCropperLeft(videoRef.current.getBoundingClientRect().left - 1);
-  }
+  // const HandleCropperLeft = () => {
+  //   setCropperLeft(videoRef.current.getBoundingClientRect().left - 1);
+  // }
 
   useEffect(() => {
     const video = videoRef.current;
@@ -52,10 +52,10 @@ const VideoCropper = () => {
       }
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
     };
   }, [aspectRatio, cropperLeft, cropperWidth]);
 
@@ -79,18 +79,19 @@ const VideoCropper = () => {
       height: cropperHeight,
     };
 
-    setCroppedRegion(croppedRegionData);
+    // setCroppedRegion(croppedRegionData);
 
     // Adjust cropped video playback
     const scaleX = video.videoWidth / video.offsetWidth;
     const scaleY = video.videoHeight / video.offsetHeight;
 
     croppedVideoRef.current.currentTime = video.currentTime;
-    croppedVideoRef.current.style.objectPosition = `-${cropperRelativeLeft * scaleX}px -${cropperRelativeTop * scaleY}px`;
-    croppedVideoRef.current.style.objectFit = 'none';
+    croppedVideoRef.current.style.objectPosition = `-${
+      cropperRelativeLeft * scaleX
+    }px -${cropperRelativeTop * scaleY}px`;
+    croppedVideoRef.current.style.objectFit = "none";
     croppedVideoRef.current.style.width = `${video.offsetWidth * scaleX}px`;
     croppedVideoRef.current.style.height = `${video.offsetHeight * scaleY}px`;
-
   }, [cropperLeft, cropperWidth, aspectRatio]);
 
   const handleMouseDown = (e) => {
@@ -133,8 +134,10 @@ const VideoCropper = () => {
     const scaleY = video.videoHeight / video.offsetHeight;
 
     croppedVideoRef.current.currentTime = video.currentTime;
-    croppedVideoRef.current.style.objectPosition = `-${cropperRelativeLeft * scaleX}px -${cropperRelativeTop * scaleY}px`;
-    croppedVideoRef.current.style.objectFit = 'none';
+    croppedVideoRef.current.style.objectPosition = `-${
+      cropperRelativeLeft * scaleX
+    }px -${cropperRelativeTop * scaleY}px`;
+    croppedVideoRef.current.style.objectFit = "none";
     croppedVideoRef.current.style.width = `${video.offsetWidth * scaleX}px`;
     croppedVideoRef.current.style.height = `${video.offsetHeight * scaleY}px`;
   };
@@ -147,27 +150,32 @@ const VideoCropper = () => {
     const newLeft = initialCropperLeft + deltaX;
 
     // Ensure cropper stays within video bounds
-    setCropperLeft(Math.max(videoContainer.left, Math.min(newLeft, videoContainer.right - cropperWidth)));
+    setCropperLeft(
+      Math.max(
+        videoContainer.left,
+        Math.min(newLeft, videoContainer.right - cropperWidth)
+      )
+    );
   };
 
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     } else {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDragging]);
 
   return (
     <>
-    <div className="controls">
+      <div className="controls">
         <label htmlFor="aspect-ratio">Aspect Ratio: </label>
         <select
           id="aspect-ratio"
@@ -175,7 +183,9 @@ const VideoCropper = () => {
           onChange={(e) => setAspectRatio(e.target.value)}
         >
           {Object.keys(aspectRatios).map((ratio) => (
-            <option key={ratio} value={ratio}>{ratio}</option>
+            <option key={ratio} value={ratio}>
+              {ratio}
+            </option>
           ))}
         </select>
         <label htmlFor="show-cropper">Show Cropper: </label>
@@ -183,65 +193,66 @@ const VideoCropper = () => {
           id="show-cropper"
           type="checkbox"
           checked={showCropper}
-          onChange={(e) => {HandleCropperLeft; setAspectRatio('9:16'); setShowCropper(e.target.checked);  }}
-        />
-    </div>
-    <div className="video-container">
-      <video width="640" height="360" ref={videoRef} controls>
-        <source src="./videoChatApp.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
-
-      {showCropper && (
-        <div
-          id="cropper"
-          className="cropper"
-          style={{
-            height: videoRef.current ? `${videoRef.current.clientHeight-25}px` : '335px',
-            width: `${cropperWidth}px`,
-            left: cropperLeft==0 ? undefined : `${cropperLeft}px`,
-            zIndex: 1, // Ensure cropper stays above video
+          onChange={(e) => {
+            setAspectRatio("9:16");
+            setShowCropper(e.target.checked);
           }}
-          onMouseDown={handleMouseDown}
-        >
-          <div className="vertical-line left"></div>
-          <div className="vertical-line right"></div>
-          <div className="dashed-line dashed-line-1"></div>
-          <div className="dashed-line dashed-line-2"></div>
-          <div className="horizontal-group">
-            <div className="horizontal-dashed-line"></div>
-            <div className="horizontal-dashed-line"></div>
-          </div>
-        </div>
-      )}
-
-      
-
-      {croppedRegion && (
-        <div className="cropped-preview">
-          <p>Cropped Preview:</p>
-          <video
-            width="640"
-            height="360"
-            ref={croppedVideoRef}
-            controls
-            style={{
-              position: 'relative',
-              left: `${croppedRegion.left}px`,
-              top: `${croppedRegion.top}px`,
-              width: `${croppedRegion.width}px`,
-              height: `${croppedRegion.height}px`,
-              border: '1px dashed red', // Example border for visualization
-            }}
-          >
-            <source src="./videoChatApp.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      )}
+        />
       </div>
+      <div className="video-container">
+        <video width="640" height="360" ref={videoRef} controls>
+          <source src="./videoChatApp.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
 
-      
+        {showCropper && (
+          <div
+            id="cropper"
+            className="cropper"
+            style={{
+              height: videoRef.current
+                ? `${videoRef.current.clientHeight - 25}px`
+                : "335px",
+              width: `${cropperWidth}px`,
+              left: cropperLeft == 0 ? undefined : `${cropperLeft}px`,
+              zIndex: 1, // Ensure cropper stays above video
+            }}
+            onMouseDown={handleMouseDown}
+          >
+            <div className="vertical-line left"></div>
+            <div className="vertical-line right"></div>
+            <div className="dashed-line dashed-line-1"></div>
+            <div className="dashed-line dashed-line-2"></div>
+            <div className="horizontal-group">
+              <div className="horizontal-dashed-line"></div>
+              <div className="horizontal-dashed-line"></div>
+            </div>
+          </div>
+        )}
+
+        {croppedRegion && (
+          <div className="cropped-preview">
+            <p>Cropped Preview:</p>
+            <video
+              width="640"
+              height="360"
+              ref={croppedVideoRef}
+              controls
+              style={{
+                position: "relative",
+                left: `${croppedRegion.left / 10}px`,
+                top: `${croppedRegion.top / 10}px`,
+                width: `${croppedRegion.width / 10}px`,
+                height: `${croppedRegion.height / 10}px`,
+                border: "1px dashed red", // Example border for visualization
+              }}
+            >
+              <source src="./videoChatApp.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )}
+      </div>
     </>
   );
 };
