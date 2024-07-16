@@ -1,14 +1,16 @@
-import './App.css'
+import "./App.css";
 // import VideoFlipScreen from "./components/VideoFlipScreen";
-import VideoCropper from './github/GvP';
+import VideoCropper from "./github/GvP";
+import VideoCrop from "./perp/VideoCorp";
 
 function App() {
   return (
     <div className="app">
       <h1>Dynamic Flip Screen</h1>
-      <VideoCropper />
+      {/* <VideoFlipScreen /> */}
+      <VideoCrop />
     </div>
   );
 }
 
-export default App
+export default App;
