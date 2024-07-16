@@ -8,7 +8,7 @@ function App() {
     <div className="app">
       <h1>Dynamic Flip Screen</h1>
       {/* <VideoFlipScreen /> */}
-      <VideoCrop />
+      <VideoCropper />
     </div>
   );
 }
