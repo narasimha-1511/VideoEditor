@@ -64,8 +64,8 @@ const VideoCropper = () => {
 
     if (!video || !croppedVideoRef.current) return;
 
-    const videoAspectRatio = video.videoWidth / video.videoHeight;
     const selectedAspectRatio = aspectRatios[aspectRatio];
+    const videoAspectRatio = video.videoWidth / video.videoHeight;
     const cropperHeight = cropperWidth / selectedAspectRatio;
 
     const videoLeft = video.getBoundingClientRect().left;
@@ -82,29 +82,29 @@ const VideoCropper = () => {
     // setCroppedRegion(croppedRegionData);
 
     // Adjust cropped video playback
-    const scaleX = video.videoWidth / video.offsetWidth;
     const scaleY = video.videoHeight / video.offsetHeight;
+    const scaleX = video.videoWidth / video.offsetWidth;
 
     croppedVideoRef.current.currentTime = video.currentTime;
     croppedVideoRef.current.style.objectPosition = `-${
       cropperRelativeLeft * scaleX
     }px -${cropperRelativeTop * scaleY}px`;
     croppedVideoRef.current.style.objectFit = "none";
-    croppedVideoRef.current.style.width = `${video.offsetWidth * scaleX}px`;
     croppedVideoRef.current.style.height = `${video.offsetHeight * scaleY}px`;
+    croppedVideoRef.current.style.width = `${video.offsetWidth * scaleX}px`;
   }, [cropperLeft, cropperWidth, aspectRatio]);
 
   const handleMouseDown = (e) => {
-    setIsDragging(true);
     setInitialMouseX(e.clientX);
+    setIsDragging(true);
     setInitialCropperLeft(cropperLeft);
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    updateCroppedRegion();
 
     // Update cropped region on mouse up
-    updateCroppedRegion();
   };
 
   const updateCroppedRegion = () => {
@@ -112,13 +112,13 @@ const VideoCropper = () => {
 
     if (!video) return;
 
-    const videoAspectRatio = video.videoWidth / video.videoHeight;
     const selectedAspectRatio = aspectRatios[aspectRatio];
+    const videoAspectRatio = video.videoWidth / video.videoHeight;
     const cropperHeight = cropperWidth / selectedAspectRatio;
 
-    const videoLeft = video.getBoundingClientRect().left;
     const cropperRelativeLeft = cropperLeft - videoLeft;
     const cropperRelativeTop = (video.offsetHeight - cropperHeight) / 2; // Adjust this based on your layout
+    const videoLeft = video.getBoundingClientRect().left;
 
     const croppedRegionData = {
       left: cropperRelativeLeft,
@@ -137,8 +137,8 @@ const VideoCropper = () => {
     croppedVideoRef.current.style.objectPosition = `-${
       cropperRelativeLeft * scaleX
     }px -${cropperRelativeTop * scaleY}px`;
-    croppedVideoRef.current.style.objectFit = "none";
     croppedVideoRef.current.style.width = `${video.offsetWidth * scaleX}px`;
+    croppedVideoRef.current.style.objectFit = "none";
     croppedVideoRef.current.style.height = `${video.offsetHeight * scaleY}px`;
   };
 
@@ -163,8 +163,8 @@ const VideoCropper = () => {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     } else {
-      document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
     }
 
     return () => {
@@ -178,8 +178,8 @@ const VideoCropper = () => {
       <div className="controls">
         <label htmlFor="aspect-ratio">Aspect Ratio: </label>
         <select
-          id="aspect-ratio"
           value={aspectRatio}
+          id="aspect-ratio"
           onChange={(e) => setAspectRatio(e.target.value)}
         >
           {Object.keys(aspectRatios).map((ratio) => (
@@ -190,8 +190,8 @@ const VideoCropper = () => {
         </select>
         <label htmlFor="show-cropper">Show Cropper: </label>
         <input
-          id="show-cropper"
           type="checkbox"
+          id="show-cropper"
           checked={showCropper}
           onChange={(e) => {
             setAspectRatio("9:16");
@@ -215,7 +215,7 @@ const VideoCropper = () => {
                 : "335px",
               width: `${cropperWidth}px`,
               left: cropperLeft == 0 ? undefined : `${cropperLeft}px`,
-              zIndex: 1, // Ensure cropper stays above video
+              zIndex: 1,
             }}
             onMouseDown={handleMouseDown}
           >
@@ -240,11 +240,11 @@ const VideoCropper = () => {
               controls
               style={{
                 position: "relative",
-                left: `${croppedRegion.left / 10}px`,
-                top: `${croppedRegion.top / 10}px`,
-                width: `${croppedRegion.width / 10}px`,
-                height: `${croppedRegion.height / 10}px`,
-                border: "1px dashed red", // Example border for visualization
+                left: `${croppedRegion.left}px`,
+                top: `${croppedRegion.top}px`,
+                width: `${croppedRegion.width}px`,
+                height: `${croppedRegion.height}px`,
+                border: "1px dashed red",
               }}
             >
               <source src="./videoChatApp.mp4" type="video/mp4" />
