@@ -79,6 +79,8 @@ export default function Home() {
     setPlayerState({ ...playerState, played: parseFloat(e.target.value) });
     playerRef.current.seekTo(parseFloat(e.target.value));
     secondPlayer.current.seekTo(parseFloat(e.target.value));
+
+    recordAction("seek");
   };
 
   const handleSeekMouseUp = (e) => {
@@ -88,8 +90,13 @@ export default function Home() {
     setPlayerState({ ...playerState, seeking: false });
   };
   const handleDrag = (e, data) => {
-    setPosition({ x: data.x, y: data.y });
-    recordAction("position");
+    if (!playerState.playing) {
+      setPosition({ x: data.x, y: data.y });
+    }
+    {
+      // alert("Pause the video to move the cropper");
+    }
+    // recordAction("position");
   };
 
   const [actionList, setActionList] = useState([]);
@@ -108,24 +115,62 @@ export default function Home() {
     switch (action) {
       case "play":
         setActionList([...actionList, currentAction]);
+
+        if (cropper) {
+          setActionList([...actionList, currentAction]);
+        } else {
+          console.log("Not Recording this Action as Cropper is not enabled.");
+        }
+
         break;
       case "pause":
         setActionList([...actionList, currentAction]);
+
+        if (cropper) {
+          setActionList([...actionList, currentAction]);
+        } else {
+          console.log("Not Recording this Action as Cropper is not enabled.");
+        }
         break;
       case "volume":
         setActionList([...actionList, currentAction]);
+
+        if (cropper) {
+          setActionList([...actionList, currentAction]);
+        } else {
+          console.log("Not Recording this Action as Cropper is not enabled.");
+        }
         break;
       case "speed":
         setActionList([...actionList, currentAction]);
+
+        if (cropper) {
+          setActionList([...actionList, currentAction]);
+        } else {
+          console.log("Not Recording this Action as Cropper is not enabled.");
+        }
         break;
       case "seek":
         setActionList([...actionList, currentAction]);
+
+        if (cropper) {
+          setActionList([...actionList, currentAction]);
+        } else {
+          console.log("Not Recording this Action as Cropper is not enabled.");
+        }
         break;
       case "aspectRatio":
         setActionList([...actionList, currentAction]);
         break;
       case "position":
         setActionList([...actionList, currentAction]);
+
+        if (cropper) {
+          setActionList([...actionList, currentAction]);
+        } else {
+          console.log("Not Recording this Action as Cropper is not enabled.");
+        }
+
         break;
       default:
         break;
@@ -159,7 +204,14 @@ export default function Home() {
                 <div className="w-full flex flex-col gap-4">
                   <div className="h-[307px] relative overflow-hidden">
                     {cropper && (
-                      <Draggable axis="x" bounds="parent" onDrag={handleDrag}>
+                      <Draggable
+                        axis="x"
+                        bounds="parent"
+                        onDrag={handleDrag}
+                        onStop={() => {
+                          recordAction("position");
+                        }}
+                      >
                         <div
                           style={{
                             width: cropSize.width,
