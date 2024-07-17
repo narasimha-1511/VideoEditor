@@ -1,34 +1,34 @@
 "use client";
-import Image from "next/image";
 import { useRef, useState } from "react";
-import { DndContext, useDraggable } from "@dnd-kit/core";
+import Image from "next/image";
 import Draggable from "react-draggable";
+import { DndContext, useDraggable } from "@dnd-kit/core";
 
-import PlayImage from "@/public/play.svg";
 import VolumeImage from "@/public/volume.svg";
-import PreviewImage from "@/public/preview.svg";
+import PlayImage from "@/public/play.svg";
 import ReactPlayer from "react-player";
+import PreviewImage from "@/public/preview.svg";
 
 export default function Home() {
   const [playerState, setPlayerState] = useState({
     url: "./video2.mp4",
-    pip: false,
     playing: false,
+    pip: false,
     controls: true,
-    light: false,
-    volume: 0.8,
     muted: false,
+    volume: 0.8,
     played: 0,
+    light: false,
     loaded: 0,
-    duration: 0,
     playbackRate: 1.0,
+    duration: 0,
     loop: false,
   });
 
   const [cropSize, setCropSize] = useState({ width: 200, height: 200 }); // Defaul
 
-  const [position, setPosition] = useState({ x: 0, y: 0 });
   const playerRef = useRef(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
 
   const handlePlay = () => {
     console.log("onPlay");
@@ -36,16 +36,16 @@ export default function Home() {
     setPlayerState({ ...playerState, playing: true });
   };
 
+  
+  const handleDuration = (duration) => {
+    console.log("onDuration", duration);
+    
+    setPlayerState({ ...playerState, duration });
+  };
   const handlePause = () => {
     console.log("onPause");
 
     setPlayerState({ ...playerState, playing: false });
-  };
-
-  const handleDuration = (duration) => {
-    console.log("onDuration", duration);
-
-    setPlayerState({ ...playerState, duration });
   };
 
   const handleSeekMouseDown = (e) => {
@@ -56,15 +56,15 @@ export default function Home() {
     setPlayerState({ ...playerState, played: parseFloat(e.target.value) });
   };
 
-  const handleDrag = (e, data) => {
-    setPosition({ x: data.x, y: data.y });
-  };
-
+  
   const handleSeekMouseUp = (e) => {
     playerRef.current.seekTo(parseFloat(e.target.value));
     secondPlayer.current.seekTo(parseFloat(e.target.value));
-
+    
     setPlayerState({ ...playerState, seeking: false });
+  };
+  const handleDrag = (e, data) => {
+    setPosition({ x: data.x, y: data.y });
   };
 
   return (
@@ -86,6 +86,22 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-2 w-full px-4 h-full">
             <div className="w-full flex flex-col gap-4">
+              <div className="h-[307px]">
+                <ReactPlayer
+                  ref={playerRef}
+                  url={playerState.url}
+                  playing={playerState.playing}
+                  controls={false}
+                  played={playerState.played}
+                  playbackRate={playerState.playbackRate}
+                  volume={playerState.volume}
+                  muted={playerState.muted}
+                  onPlay={handlePlay}
+                  onPause={handlePause}
+                  onSeek={(e) => console.log("onSeek", e)}
+                  onDuration={handleDuration}
+                />
+              </div>
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center w-full ">
                   <Image src={PlayImage} alt="Pause Play Control" />
@@ -126,6 +142,49 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+
+              <div className="flex gap-4">
+                <div>
+                  <select
+                    className="border-1 border-[#45474E] text-[white] px-[10px] py-[7px] bg-transparent"
+                    value={playerState.playbackRate}
+                    onChange={(e) =>
+                      setPlayerState({
+                        ...playerState,
+                        playbackRate: parseFloat(e.target.value),
+                      })
+                    }
+                  >
+                    {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((value) => (
+                      <option
+                        className="bg-transparent "
+                        key={value}
+                        value={value}
+                      >
+                        {value}x
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <select
+                    className="border-1 border-[#45474E] text-[white] px-[10px] py-[7px] bg-transparent"
+                    value={(cropSize.width / cropSize.height).toFixed(2)}
+                    onChange={(e) => {
+                      const aspectRatio = parseFloat(e.target.value);
+                      setCropSize({
+                        width: cropSize.height * aspectRatio,
+                        height: cropSize.height,
+                      });
+                    }}
+                  >
+                    <option value={(16 / 9).toFixed(2)}>16:9</option>
+                    <option value={(4 / 3).toFixed(2)}>4:3</option>
+                    <option value="1.00">1:1</option>
+                  </select>
+                </div>
+              </div>
             </div>
             <div className="flex flex-col justify-between items-center w-full">
               <span>Preview</span>
@@ -133,6 +192,22 @@ export default function Home() {
                 <Image src={PreviewImage} alt="Preview Image" />
               </div>
             </div>
+          </div>
+          <div className="border-[#494C55] w-full border-t-[1px] p-4 flex justify-between items-end">
+            <div className="flex gap-2">
+              <button className="bg-[#7C36D6] text-white text-sm font-medium px-4 py-2 rounded-[10px]">
+                Start Cropper
+              </button>
+              <button className="bg-[#7C36D6] text-white text-sm font-medium px-4 py-2 rounded-[10px]">
+                Remove Cropper
+              </button>
+              <button className="bg-[#7C36D6] text-white text-sm font-medium px-4 py-2 rounded-[10px]">
+                Generate Preview
+              </button>
+            </div>
+            <button className="bg-[#45474E] text-white text-sm font-medium px-4 py-2 rounded-[10px]">
+              Cancel
+            </button>
           </div>
         </div>
       </main>
