@@ -29,7 +29,7 @@ export default function Home() {
     url: "./video2.mp4",
     playing: false,
     pip: false,
-    controls: true,
+    controls: false,
     muted: false,
     volume: 0.8,
     played: 0,
@@ -47,7 +47,6 @@ export default function Home() {
 
   const handlePlay = () => {
     console.log("onPlay", playerState.played);
-
     setPlayerState({ ...playerState, playing: true });
   };
 
@@ -71,10 +70,15 @@ export default function Home() {
 
   const handleSeekMouseDown = (e) => {
     setPlayerState({ ...playerState, seeking: true });
+    playerRef.current.seekTo(parseFloat(e.target.value));
+    secondPlayer.current.seekTo(parseFloat(e.target.value));
   };
 
   const handleSeekChange = (e) => {
+    recordAction("seek");
     setPlayerState({ ...playerState, played: parseFloat(e.target.value) });
+    playerRef.current.seekTo(parseFloat(e.target.value));
+    secondPlayer.current.seekTo(parseFloat(e.target.value));
   };
 
   const handleSeekMouseUp = (e) => {
@@ -85,6 +89,47 @@ export default function Home() {
   };
   const handleDrag = (e, data) => {
     setPosition({ x: data.x, y: data.y });
+    recordAction("position");
+  };
+
+  const [actionList, setActionList] = useState([]);
+
+  const recordAction = (action) => {
+    console.log("Action Recorded", action);
+
+    const currentAction = {
+      timeStamps: playerState.played,
+      cooridinates: position,
+      volume: playerState.volume,
+      playBackRate: playerState.playbackRate,
+      action,
+    };
+
+    switch (action) {
+      case "play":
+        setActionList([...actionList, currentAction]);
+        break;
+      case "pause":
+        setActionList([...actionList, currentAction]);
+        break;
+      case "volume":
+        setActionList([...actionList, currentAction]);
+        break;
+      case "speed":
+        setActionList([...actionList, currentAction]);
+        break;
+      case "seek":
+        setActionList([...actionList, currentAction]);
+        break;
+      case "aspectRatio":
+        setActionList([...actionList, currentAction]);
+        break;
+      case "position":
+        setActionList([...actionList, currentAction]);
+        break;
+      default:
+        break;
+    }
   };
 
   return (
@@ -158,12 +203,13 @@ export default function Home() {
                     <div className="flex gap-2 items-center w-full ">
                       <Image
                         className="cursor-pointer"
-                        onClick={() =>
+                        onClick={() => {
+                          recordAction(playerState.playing ? "pause" : "play");
                           setPlayerState({
                             ...playerState,
                             playing: !playerState.playing,
-                          })
-                        }
+                          });
+                        }}
                         src={PlayImage}
                         alt="Pause Play Control"
                       />
@@ -204,12 +250,13 @@ export default function Home() {
                           max={1}
                           step={0.1}
                           value={playerState.volume}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setPlayerState({
                               ...playerState,
                               volume: parseFloat(e.target.value),
-                            })
-                          }
+                            });
+                            recordAction("volume");
+                          }}
                         />
                       </div>
                     </div>
@@ -220,12 +267,13 @@ export default function Home() {
                       <select
                         className="border-1 border-[#45474E] text-[white] px-[10px] py-[7px] bg-transparent"
                         value={playerState.playbackRate}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setPlayerState({
                             ...playerState,
                             playbackRate: parseFloat(e.target.value),
-                          })
-                        }
+                          });
+                          recordAction("speed");
+                        }}
                       >
                         {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map(
                           (value) => (
@@ -251,6 +299,7 @@ export default function Home() {
                             width: cropSize.height * aspectRatio,
                             height: cropSize.height,
                           });
+                          recordAction("aspectRatio");
                         }}
                       >
                         <option value={(16 / 9).toFixed(2)}>16:9</option>
@@ -266,6 +315,30 @@ export default function Home() {
                   }  items-center w-full`}
                 >
                   <span>Preview</span>
+
+                  <div
+                    style={{
+                      width: cropSize.width,
+                      visibility: cropper ? "visible" : "hidden",
+                    }}
+                    className="overflow-hidden h-[307px]"
+                  >
+                    <ReactPlayer
+                      style={{
+                        marginLeft: `-${position.x}px`,
+                      }}
+                      // width={position.x}
+                      ref={secondPlayer}
+                      height={"307px"}
+                      muted={true}
+                      url={playerState.url}
+                      played={playerState.played}
+                      playbackRate={playerState.playbackRate}
+                      playing={playerState.playing}
+                      controls={false}
+                    />
+                  </div>
+
                   {cropper ? (
                     <div
                       style={{
@@ -295,6 +368,7 @@ export default function Home() {
                 </div>
               </div>
             )}
+            {tab == "generate" && <div className="h-full px-4">Generate</div>}
             <div className="border-[#494C55] w-full border-t-[1px] p-4 flex justify-between items-end">
               {tab == "preview" ? (
                 <>
@@ -316,7 +390,13 @@ export default function Home() {
                     >
                       Remove Cropper
                     </button>
-                    <button className="bg-[#7C36D6] text-white text-sm font-medium px-4 py-2 rounded-[10px]">
+                    <button
+                      onClick={() => {
+                        console.log(actionList);
+                      }}
+                      disabled={actionList.length == 0}
+                      className="bg-[#7C36D6] text-white text-sm font-medium px-4 py-2 rounded-[10px] disabled:opacity-50"
+                    >
                       Generate Preview
                     </button>
                   </div>
