@@ -9,9 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.1.0",
+    "next": "14.2.5",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.2.5"
+    "react-draggable": "^4.4.6",
+    "react-player": "^2.16.0"
   },
   "devDependencies": {
     "postcss": "^8",
