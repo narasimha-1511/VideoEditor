@@ -19,55 +19,6 @@ export default function Home() {
 
   const containerRef = useRef(null);
 
-  const cropVideo = async () => {
-    if (typeof window !== "undefined") {
-      const ffmpeg = createFFmpeg({ log: true });
-
-      await ffmpeg.load();
-      const inputFile = playerState.url;
-      const cropX = position.x;
-      const cropWidth = cropSize.width;
-
-      // Get the video element and its dimensions
-      const videoElement = playerRef.current.getInternalPlayer();
-      const videoWidth = videoElement.videoWidth;
-      const videoHeight = videoElement.videoHeight;
-
-      // Calculate the crop width relative to the video's actual width
-      // Adjust cropX to ensure it doesn't exceed videoWidth
-      const adjustedCropX = Math.max(
-        0,
-        Math.min(cropX, videoWidth - cropWidth)
-      );
-      const adjustedCropWidth = (cropWidth / 541) * videoWidth;
-
-      console.log(
-        "Crop Video",
-        inputFile,
-        adjustedCropX,
-        adjustedCropWidth,
-        videoHeight
-      );
-
-      ffmpeg.FS("writeFile", "input.mp4", await fetchFile(inputFile));
-
-      await ffmpeg.run(
-        "-i",
-        "input.mp4",
-        "-vf",
-        `crop=${cropWidth}:${videoHeight}:${cropX}:0`,
-        "output.mp4"
-      );
-
-      const data = ffmpeg.FS("readFile", "output.mp4");
-      const url = URL.createObjectURL(
-        new Blob([data.buffer], { type: "video/mp4" })
-      );
-      setOutputUrl(url);
-      setTab("generate");
-    }
-  };
-
   const tabs = [
     {
       value: "preview",
@@ -99,8 +50,7 @@ export default function Home() {
   const [position, setPosition] = useState({
     x: 0,
     y: 0,
-    scrollPercentageVertical: 0,
-    scrollPercentageHorizontal: 0,
+    width: cropSize.width,
   });
 
   const handlePlay = () => {
@@ -155,6 +105,39 @@ export default function Home() {
     bottomRight: { x: 0, y: 0 },
   });
 
+  function filterAndCondense(data) {
+    const result = [];
+    let current = null;
+
+    for (const item of data) {
+      // If current is null or a new time or endTime group has started
+      if (
+        !current ||
+        item.time !== current.time ||
+        item.endTime !== current.endTime
+      ) {
+        if (current) {
+          result.push(current);
+        }
+        current = { ...item, xRange: [item.x, item.x] };
+      } else {
+        // Update the xRange to cover the new x value
+        current.xRange[1] = item.x;
+      }
+    }
+
+    // Add the last accumulated item
+    if (current) {
+      result.push(current);
+    }
+
+    // Optionally, transform xRange to a single x value if needed
+    return result.map((item) => {
+      const { xRange, ...rest } = item;
+      return { ...rest, xStart: xRange[0], xEnd: xRange[1] };
+    });
+  }
+
   const handleDrag = (e, data) => {
     const container = containerRef.current; // Replace with your container's ID
     const scrollTop = container.scrollTop;
@@ -182,8 +165,7 @@ export default function Home() {
     const newPosition = {
       x: data.x,
       y: data.y,
-      scrollPercentageVertical,
-      scrollPercentageHorizontal,
+      width: cropSize.width,
     };
 
     setPosition(newPosition);
@@ -196,8 +178,8 @@ export default function Home() {
     console.log("Action Recorded", action);
 
     const currentAction = {
-      timeStamps: playerState.played,
-      cooridinates: position,
+      timeStamps: playerState.played * playerState.duration,
+      coordinates: position,
       volume: playerState.volume,
       playBackRate: playerState.playbackRate,
       action,
@@ -253,10 +235,10 @@ export default function Home() {
       case "aspectRatio":
         setActionList([...actionList, currentAction]);
         break;
-      case "position":
+      case "positionStart" || "positionEnd":
         setActionList([...actionList, currentAction]);
 
-        if (cropper) {
+        if (cropper && playerState.playing) {
           setActionList([...actionList, currentAction]);
         } else {
           console.log("Not Recording this Action as Cropper is not enabled.");
@@ -265,6 +247,136 @@ export default function Home() {
         break;
       default:
         break;
+    }
+  };
+
+  function parseVideoEditingData(data, videoWidth, videoHeight) {
+    // Sort data by timestamps to ensure chronological order
+    data.sort((a, b) => a.timeStamps - b.timeStamps);
+
+    let result = [];
+    let currentClip = null;
+
+    data.forEach((entry, index) => {
+      switch (entry.action) {
+        case "positionStart":
+          if (currentClip) {
+            // Close the previous clip if it's not the start
+            if (currentClip.startTime !== null) {
+              currentClip.endTime = entry.timeStamps;
+              result.push(currentClip);
+            }
+          }
+          // Start a new clip
+          currentClip = {
+            startTime: entry.timeStamps,
+            endTime: null,
+            coordinates: entry.coordinates,
+            volume: entry.volume,
+            playBackRate: entry.playBackRate,
+          };
+          break;
+        case "play":
+          // Continue playing, no action needed for clips
+          break;
+        case "pause":
+          if (currentClip && currentClip.startTime !== null) {
+            // Close the current clip
+            currentClip.endTime = entry.timeStamps;
+            result.push(currentClip);
+            currentClip = null;
+          }
+          break;
+        default:
+          break;
+      }
+    });
+
+    // Handle the case where the last clip might not be closed
+    if (
+      currentClip &&
+      currentClip.startTime !== null &&
+      currentClip.endTime === null
+    ) {
+      currentClip.endTime = data[data.length - 1].timeStamps;
+      result.push(currentClip);
+    }
+
+    // Generate crop and pan data
+    const formattedData = result.map((clip) => ({
+      startTime: clip.startTime,
+      endTime: clip.endTime,
+      coordinates: {
+        x: Math.max(
+          0,
+          Math.min(clip.coordinates.x, videoWidth - clip.coordinates.width)
+        ),
+        y: Math.max(
+          0,
+          Math.min(clip.coordinates.y, videoHeight - clip.coordinates.height)
+        ),
+        width: Math.min(
+          clip.coordinates.width,
+          videoWidth - clip.coordinates.x
+        ),
+        height: Math.min(
+          clip.coordinates.height,
+          videoHeight - clip.coordinates.y
+        ),
+      },
+      volume: clip.volume,
+      playBackRate: clip.playBackRate,
+    }));
+
+    return formattedData;
+  }
+
+  const cropVideo = async () => {
+    if (typeof window !== "undefined") {
+      const ffmpeg = createFFmpeg({ log: true });
+
+      await ffmpeg.load();
+      const inputFile = playerState.url;
+      const cropX = position.x;
+      const cropWidth = cropSize.width;
+
+      // Get the video element and its dimensions
+      const videoElement = playerRef.current.getInternalPlayer();
+      const videoWidth = videoElement.videoWidth;
+      const videoHeight = videoElement.videoHeight;
+
+      // Calculate the crop width relative to the video's actual width
+      // Adjust cropX to ensure it doesn't exceed videoWidth
+      const adjustedCropX = Math.max(
+        0,
+        Math.min(cropX, videoWidth - cropWidth)
+      );
+      const adjustedCropWidth = (cropWidth / 525) * videoWidth;
+
+      console.log(
+        "Crop Video",
+        inputFile,
+        adjustedCropX,
+        adjustedCropWidth,
+        videoHeight
+      );
+
+      ffmpeg.FS("writeFile", "input.mp4", await fetchFile(inputFile));
+
+      await ffmpeg.run(
+        "-i",
+        "input.mp4",
+        "-vf",
+        `crop=${adjustedCropWidth}:${videoHeight}:${adjustedCropX}:0`,
+        "output.mp4"
+      );
+
+      const data = ffmpeg.FS("readFile", "output.mp4");
+      const url = URL.createObjectURL(
+        new Blob([data.buffer], { type: "video/mp4" })
+      );
+      setOutputUrl(url);
+      setTab("generate");
     }
   };
 
