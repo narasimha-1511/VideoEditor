@@ -17,14 +17,7 @@ export default function Home() {
   const [cropper, setCropper] = useState(false);
   const [outputUrl, setOutputUrl] = useState(null);
 
-  useEffect(() => {
-    const loadFFmpeg = async () => {
-      if (!ffmpeg.isLoaded()) {
-        await ffmpeg.load();
-      }
-    };
-    loadFFmpeg();
-  }, []);
+  const containerRef = useRef(null);
 
   const cropVideo = async () => {
     if (typeof window !== "undefined") {
@@ -34,7 +27,27 @@ export default function Home() {
       const inputFile = playerState.url;
       const cropX = position.x;
       const cropWidth = cropSize.width;
-      const videoHeight = cropSize.height;
+
+      // Get the video element and its dimensions
+      const videoElement = playerRef.current.getInternalPlayer();
+      const videoWidth = videoElement.videoWidth;
+      const videoHeight = videoElement.videoHeight;
+
+      // Calculate the crop width relative to the video's actual width
+      // Adjust cropX to ensure it doesn't exceed videoWidth
+      const adjustedCropX = Math.max(
+        0,
+        Math.min(cropX, videoWidth - cropWidth)
+      );
+      const adjustedCropWidth = (cropWidth / 541) * videoWidth;
+
+      console.log(
+        "Crop Video",
+        inputFile,
+        adjustedCropX,
+        adjustedCropWidth,
+        videoHeight
+      );
 
       ffmpeg.FS("writeFile", "input.mp4", await fetchFile(inputFile));
 
@@ -51,6 +64,7 @@ export default function Home() {
         new Blob([data.buffer], { type: "video/mp4" })
       );
       setOutputUrl(url);
+      setTab("generate");
     }
   };
 
@@ -66,7 +80,7 @@ export default function Home() {
   ];
 
   const [playerState, setPlayerState] = useState({
-    url: "./video2.mp4",
+    url: "./video4.mp4",
     playing: false,
     pip: false,
     controls: false,
@@ -79,11 +93,15 @@ export default function Home() {
     duration: 0,
     loop: false,
   });
-
-  const [cropSize, setCropSize] = useState({ width: 200, height: 200 }); // Defaul
+  const [cropSize, setCropSize] = useState({ width: 200, height: 100 }); // Default crop size
 
   const playerRef = useRef(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({
+    x: 0,
+    y: 0,
+    scrollPercentageVertical: 0,
+    scrollPercentageHorizontal: 0,
+  });
 
   const handlePlay = () => {
     console.log("onPlay", playerState.played);
@@ -129,14 +147,47 @@ export default function Home() {
 
     setPlayerState({ ...playerState, seeking: false });
   };
+
+  const [cornerPositions, setCornerPositions] = useState({
+    topLeft: { x: 0, y: 0 },
+    topRight: { x: 0, y: 0 },
+    bottomLeft: { x: 0, y: 0 },
+    bottomRight: { x: 0, y: 0 },
+  });
+
   const handleDrag = (e, data) => {
-    if (!playerState.playing) {
-      setPosition({ x: data.x, y: data.y });
-    }
-    {
-      // alert("Pause the video to move the cropper");
-    }
-    // recordAction("position");
+    const container = containerRef.current; // Replace with your container's ID
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight - container.clientHeight;
+    const scrollLeft = container.scrollLeft;
+    const scrollWidth = container.scrollWidth - container.clientWidth;
+
+    const scrollPercentageVertical = (scrollTop / scrollHeight) * 100;
+    const scrollPercentageHorizontal = (scrollLeft / scrollWidth) * 100;
+
+    const draggableElement = e.target;
+    // const { offsetWidth: width, offsetHeight: height } = draggableElement;
+    const width = cropSize.width;
+    const height = cropSize.height;
+
+    // Calculate the corner positions
+    const newCornerPositions = {
+      topLeft: { x: data.x, y: data.y },
+      topRight: { x: data.x + width, y: data.y },
+      bottomLeft: { x: data.x, y: data.y + height },
+      bottomRight: { x: data.x + width, y: data.y + height },
+    };
+
+    // Update position state with scroll percentages included
+    const newPosition = {
+      x: data.x,
+      y: data.y,
+      scrollPercentageVertical,
+      scrollPercentageHorizontal,
+    };
+
+    setPosition(newPosition);
+    setCornerPositions(newCornerPositions);
   };
 
   const [actionList, setActionList] = useState([]);
@@ -242,54 +293,33 @@ export default function Home() {
             {tab == "preview" && (
               <div className="grid grid-cols-2 w-full px-4 h-full">
                 <div className="w-full flex flex-col gap-4">
-                  <div className="h-[307px] relative overflow-hidden">
-                    {cropper && (
-                      <Draggable
-                        axis="x"
-                        bounds="parent"
-                        onDrag={handleDrag}
-                        onStop={() => {
-                          recordAction("position");
+                  <div className="relative">
+                    <Draggable
+                      axis="x"
+                      bounds="parent"
+                      onDrag={handleDrag}
+                      onStop={() => {
+                        recordAction("position");
+                      }}
+                    >
+                      <div
+                        ref={containerRef}
+                        style={{
+                          width: cropSize.width,
+                          visibility: cropper ? "visible" : "hidden",
                         }}
+                        className={`absolute z-10 crop-div min-h-full grid grid-cols-3 grid-rows-3 border-[1px] border-white`}
                       >
-                        <div
-                          style={{
-                            width: cropSize.width,
-                          }}
-                          className={`absolute z-10 crop-div min-h-full grid grid-cols-3 grid-rows-3 border-[1px] border-white`}
-                        >
-                          {Array.from({ length: 9 }).map((_, index) => (
-                            <div
-                              key={index}
-                              className="border-[0.5px] opacity-40 border-dashed border-white flex justify-center items-center"
-                            >
-                              {/* {index} */}
-                            </div>
-                          ))}
-                        </div>
-                      </Draggable>
-                    )}
-                    {cropper && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 pointer-events-none"></div>
-                    )}
-                    <ReactPlayer
-                      className="h-full rounded-[6px] overflow-clip"
-                      height={"100%"}
-                      width={"100%"}
-                      ref={playerRef}
-                      url={playerState.url}
-                      playing={playerState.playing}
-                      controls={false}
-                      played={playerState.played}
-                      playbackRate={playerState.playbackRate}
-                      volume={playerState.volume}
-                      muted={playerState.muted}
-                      onPlay={handlePlay}
-                      onPause={handlePause}
-                      onSeek={(e) => console.log("onSeek", e)}
-                      onDuration={handleDuration}
-                      onProgress={handleProgess}
-                    />
+                        {Array.from({ length: 9 }).map((_, index) => (
+                          <div
+                            key={index}
+                            className="border-[0.5px] opacity-40 border-dashed border-white flex justify-center items-center"
+                          >
+                            {/* {index} */}
+                          </div>
+                        ))}
+                      </div>
+                    </Draggable>
                   </div>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2 items-center w-full ">
@@ -430,7 +460,14 @@ export default function Home() {
                       controls={false}
                     />
                   </div>
-
+                  <div className="ml-4">
+                    <h2>Crop Data</h2>
+                    <p>X: {position.x}</p>
+                    <p>Y: {position.y}</p>
+                    <p>
+                      Scroll Percentage: {position.scrollPercentageHorizontal}
+                    </p>
+                  </div>
                   {cropper ? (
                     <div
                       style={{
@@ -460,7 +497,12 @@ export default function Home() {
                 </div>
               </div>
             )}
-            {tab == "generate" && <div className="h-full px-4">Generate</div>}
+
+            {tab == "generate" && (
+              <div className="h-full px-4">
+                <ReactPlayer url={outputUrl} controls={true} />
+              </div>
+            )}
             <div className="border-[#494C55] w-full border-t-[1px] p-4 flex justify-between items-end">
               {tab == "preview" ? (
                 <>
