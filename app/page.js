@@ -36,7 +36,7 @@ export default function Home() {
     pip: false,
     controls: false,
     muted: false,
-    volume: 0.8,
+    volume: 0,
     played: 0,
     light: false,
     loaded: 0,
@@ -235,7 +235,8 @@ export default function Home() {
       case "aspectRatio":
         setActionList([...actionList, currentAction]);
         break;
-      case "positionStart" || "positionEnd":
+      case "positionStart":
+      case "positionEnd":
         setActionList([...actionList, currentAction]);
 
         if (cropper && playerState.playing) {
@@ -251,40 +252,86 @@ export default function Home() {
   };
 
   function parseVideoEditingData(data, videoWidth, videoHeight) {
-    // Sort data by timestamps to ensure chronological order
-    data.sort((a, b) => a.timeStamps - b.timeStamps);
-
     let result = [];
     let currentClip = null;
+    let positionStartTime = null;
+    let positionStartX = null;
 
     data.forEach((entry, index) => {
       switch (entry.action) {
+        case "play":
+          if (!currentClip) {
+            // Start a new clip if there's no current clip
+            currentClip = {
+              startTime: entry.timeStamps,
+              endTime: null,
+              coordinates: entry.coordinates,
+              volume: entry.volume,
+              playBackRate: entry.playBackRate,
+              scrollingEffect: false,
+              positionStartX: null,
+              positionEndX: null,
+            };
+          }
+          break;
+        case "pause":
+          if (currentClip) {
+            if (positionStartTime !== null) {
+              // Close the clip at positionStart time
+              currentClip.endTime = positionStartTime;
+              result.push(currentClip);
+              // Create a new clip from positionStart to pause
+              currentClip = {
+                startTime: positionStartTime,
+                endTime: entry.timeStamps,
+                coordinates: entry.coordinates,
+                volume: entry.volume,
+                playBackRate: entry.playBackRate,
+                scrollingEffect: false,
+                positionStartX: positionStartX,
+                positionEndX: null,
+              };
+            } else {
+              // Close the current clip
+              currentClip.endTime = entry.timeStamps;
+              result.push(currentClip);
+              currentClip = null;
+            }
+            positionStartTime = null;
+            positionStartX = null;
+          }
+          break;
         case "positionStart":
           if (currentClip) {
-            // Close the previous clip if it's not the start
+            // Split the clip at positionStart
             if (currentClip.startTime !== null) {
               currentClip.endTime = entry.timeStamps;
               result.push(currentClip);
             }
+            positionStartTime = entry.timeStamps;
+            positionStartX = entry.coordinates.x;
+            currentClip = {
+              startTime: entry.timeStamps,
+              endTime: null,
+              coordinates: entry.coordinates,
+              volume: entry.volume,
+              playBackRate: entry.playBackRate,
+              scrollingEffect: false,
+              positionStartX: positionStartX,
+              positionEndX: null,
+            };
           }
-          // Start a new clip
-          currentClip = {
-            startTime: entry.timeStamps,
-            endTime: null,
-            coordinates: entry.coordinates,
-            volume: entry.volume,
-            playBackRate: entry.playBackRate,
-          };
           break;
-        case "play":
-          // Continue playing, no action needed for clips
-          break;
-        case "pause":
-          if (currentClip && currentClip.startTime !== null) {
-            // Close the current clip
+        case "positionEnd":
+          if (currentClip && positionStartTime !== null) {
+            // Close the current clip at positionEnd time and mark scrollingEffect as true
             currentClip.endTime = entry.timeStamps;
+            currentClip.scrollingEffect = true;
+            currentClip.positionEndX = entry.coordinates.x;
             result.push(currentClip);
             currentClip = null;
+            positionStartTime = null;
+            positionStartX = null;
           }
           break;
         default:
@@ -302,33 +349,7 @@ export default function Home() {
       result.push(currentClip);
     }
 
-    // Generate crop and pan data
-    const formattedData = result.map((clip) => ({
-      startTime: clip.startTime,
-      endTime: clip.endTime,
-      coordinates: {
-        x: Math.max(
-          0,
-          Math.min(clip.coordinates.x, videoWidth - clip.coordinates.width)
-        ),
-        y: Math.max(
-          0,
-          Math.min(clip.coordinates.y, videoHeight - clip.coordinates.height)
-        ),
-        width: Math.min(
-          clip.coordinates.width,
-          videoWidth - clip.coordinates.x
-        ),
-        height: Math.min(
-          clip.coordinates.height,
-          videoHeight - clip.coordinates.y
-        ),
-      },
-      volume: clip.volume,
-      playBackRate: clip.playBackRate,
-    }));
-
-    return formattedData;
+    return result;
   }
 
   const cropVideo = async () => {
@@ -344,14 +365,15 @@ export default function Home() {
       const videoElement = playerRef.current.getInternalPlayer();
       const videoWidth = videoElement.videoWidth;
       const videoHeight = videoElement.videoHeight;
+      // Load the input video
+      ffmpeg.FS("writeFile", "input.mp4", await fetchFile(inputFile));
 
-      // Calculate the crop width relative to the video's actual width
-      // Adjust cropX to ensure it doesn't exceed videoWidth
-      const adjustedCropX = Math.max(
-        0,
-        Math.min(cropX, videoWidth - cropWidth)
-      );
-      const adjustedCropWidth = (cropWidth / 525) * videoWidth;
+      const frameRate = 30; // Default to 30 if not found
+
+      console.log("Frame Rate:", frameRate);
+
+      // Generate crop data
+      const positionData = parseVideoEditingData(actionList);
 
       console.log(
         "Crop Video",
